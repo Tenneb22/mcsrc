@@ -21,6 +21,7 @@ import { setSelectedFile, state } from '../logic/State';
 import type { Token } from '../logic/Tokens';
 import { filter, take } from "rxjs";
 import { getNextJumpToken, nextUsageNavigation, usageQuery } from '../logic/FindUsages';
+import { setupJavaBytecodeLanguage } from '../utils/JavaBytecode';
 
 const IS_DEFINITION_CONTEXT_KEY_NAME = "is_definition";
 
@@ -389,8 +390,11 @@ const Code = () => {
             }
         });
 
+        const bytecode = setupJavaBytecodeLanguage(monaco);
+
         return () => {
             // Dispose in the oppsite order
+            bytecode.dispose();
             viewUsages.dispose();
             copyMixin.dispose();
             copyAw.dispose();
@@ -461,6 +465,12 @@ const Code = () => {
                 }
             };
 
+            if (decompileResult.language !== "java") {
+                // For bytecode, no folding to wait for
+                executeScroll();
+                return;
+            }
+
             // Wait for folding to complete and DOM to settle
             editor.getAction('editor.foldAll')?.run().then(() => {
                 // Use requestAnimationFrame to ensure Monaco has finished layout
@@ -474,6 +484,8 @@ const Code = () => {
     // Scroll to a "Find usages" token
     useEffect(() => {
         if (editorRef.current && decompileResult) {
+            if (decompileResult.language !== "java") return;
+
             const editor = editorRef.current;
 
             lineHighlightRef.current?.clear();
@@ -511,7 +523,8 @@ const Code = () => {
             {contextHolder}
             <Editor
                 height="100vh"
-                defaultLanguage="java"
+                defaultLanguage={"java"}
+                language={decompileResult?.language}
                 theme="vs-dark"
                 value={decompileResult?.source}
                 options={{
@@ -525,8 +538,11 @@ const Code = () => {
                 onMount={(codeEditor) => {
                     editorRef.current = codeEditor;
 
-                    // Fold imports by default
-                    codeEditor.getAction('editor.foldAll')?.run();
+                    // Fold imports by default (only for java code, not bytecode)
+                    if (decompileResult?.language === "java") {
+                        console.log("Folding imports");
+                        codeEditor.getAction('editor.foldAll')?.run();
+                    }
 
                     // Update context key when cursor position changes
                     // We use this to know when to show the options to copy AW/Mixin strings

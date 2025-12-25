@@ -73,7 +73,7 @@ combineLatest([state, supportsPermalinking]).subscribe(([s, supported]) => {
   document.title = s.file.replace('.class', '');
 
   if (!supported) {
-    window.history.replaceState({}, '', '');
+    window.location.hash = '';
     return;
   }
 

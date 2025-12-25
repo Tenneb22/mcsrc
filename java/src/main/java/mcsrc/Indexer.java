@@ -2,14 +2,15 @@ package mcsrc;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceClassVisitor;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.typedarrays.ArrayBuffer;
 import org.teavm.jso.typedarrays.Int8Array;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.*;
 
 public class Indexer {
     private static final Map<String, Set<String>> usages = new HashMap<>();
@@ -30,6 +31,26 @@ public class Indexer {
     @JSExport
     public static int getUsageSize() {
         return usageSize;
+    }
+
+    @JSExport
+    public static String getBytecode(ArrayBuffer[] classBuffers) {
+        StringBuilder result = new StringBuilder();
+
+        for (ArrayBuffer classBuffer : classBuffers) {
+            byte[] bytes = new Int8Array(classBuffer).copyToJavaArray();
+            ClassReader classReader = new ClassReader(bytes);
+            Textifier textifier = new Textifier();
+
+            StringWriter out = new StringWriter();
+            PrintWriter writer = new PrintWriter(out);
+            TraceClassVisitor traceClassVisitor = new TraceClassVisitor(null, textifier, writer);
+            classReader.accept(traceClassVisitor, 0);
+
+            result.append(out).append("\n");
+        }
+
+        return result.toString();
     }
 
     public static void addUsage(String key, String value) {

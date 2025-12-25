@@ -3,11 +3,13 @@ import { useState } from "react";
 import { SettingOutlined } from '@ant-design/icons';
 import { Checkbox } from 'antd';
 import { useObservable } from "../utils/UseObservable";
-import { BooleanSetting, enableTabs, displayLambdas, focusSearch, KeybindSetting, type Key, type KeybindValue } from "../logic/Settings";
+import { BooleanSetting, enableTabs, displayLambdas, focusSearch, KeybindSetting, type Key, type KeybindValue, bytecode } from "../logic/Settings";
 import { capturingKeybind, rawKeydownEvent } from "../logic/Keybinds";
 
 const SettingsModal = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const displayLambdasValue = useObservable(displayLambdas.observable);
+    const bytecodeValue = useObservable(bytecode.observable);
 
     return (
         <>
@@ -22,7 +24,8 @@ const SettingsModal = () => {
             >
                 <Form layout="horizontal" labelCol={{ span: 8 }} wrapperCol={{ span: 16 }}>
                     <BooleanToggle setting={enableTabs} title={"Enable Tabs"} />
-                    <BooleanToggle setting={displayLambdas} title={"Lambda Names"} tooltip="Display lambda names as inline comments. Does not support permalinking." />
+                    <BooleanToggle setting={displayLambdas} title={"Lambda Names"} tooltip="Display lambda names as inline comments. Does not support permalinking." disabled={bytecodeValue} />
+                    <BooleanToggle setting={bytecode} title={"Show Bytecode"} tooltip="Show bytecode instructions alongside decompiled source. Does not support permalinking." disabled={displayLambdasValue} />
                     <KeybindControl setting={focusSearch} title={"Focus Search"} />
                 </Form>
             </Modal>
@@ -34,15 +37,16 @@ interface BooleanToggleProps {
     setting: BooleanSetting;
     title: string;
     tooltip?: string;
+    disabled?: boolean;
 }
 
-const BooleanToggle: React.FC<BooleanToggleProps> = ({ setting, title, tooltip }) => {
+const BooleanToggle: React.FC<BooleanToggleProps> = ({ setting, title, tooltip, disabled }) => {
     const value = useObservable(setting.observable);
     const onChange: CheckboxProps['onChange'] = (e) => {
         setting.value = e.target.checked;
     };
 
-    const checkbox = <Checkbox checked={value} onChange={onChange} />;
+    const checkbox = <Checkbox checked={value} onChange={onChange} disabled={disabled} />;
 
     return (
         <Form.Item label={title}>

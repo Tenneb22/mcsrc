@@ -37,13 +37,13 @@ html, body {margin: 0; height: 100%; overflow: hidden}
 
 /* Control comment marker color, eg "/*" */
 .mtk7 {
-  color: #ff9d00 !important;
+  color: #6a9955 !important;
   font-style: italic;
 }
 
 /* Control comment color, eg what is inside "/*" */
 .mtk7.method-token-decoration {
-  color: #ffb53d !important;
+  color: #6a9955 !important;
   font-style: italic;
 }
 

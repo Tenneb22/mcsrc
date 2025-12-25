@@ -1,33 +1,25 @@
 import { load } from "../../java/build/generated/teavm/wasm-gc/java.wasm-runtime.js";
 import indexerWasm from '../../java/build/generated/teavm/wasm-gc/java.wasm?url';
+import { JavaWasm } from "../java.js";
 import type { UsageKey, UsageString } from "./UsageIndex.js";
 
-let teavm: Awaited<ReturnType<typeof load>> | null = null;
+let java: JavaWasm | null = null;
 
-const getIndexer = async (): Promise<Indexer> => {
-    if (!teavm) {
-        teavm = await load(indexerWasm);
+const getJava = async (): Promise<JavaWasm> => {
+    if (!java) {
+        java = await JavaWasm.create();
     }
-    return teavm.exports as Indexer;
+    return java;
 };
 
 export const index = async (data: ArrayBufferLike): Promise<void> => {
-    const indexer = await getIndexer();
-    indexer.index(data);
+    (await getJava()).index(data);
 };
 
 export const getUsage = async (key: UsageKey): Promise<[UsageString]> => {
-    const indexer = await getIndexer();
-    return indexer.getUsage(key);
+    return await (await getJava()).getUsage(key) as [UsageString];
 };
 
 export const getUsageSize = async (): Promise<number> => {
-    const indexer = await getIndexer();
-    return indexer.getUsageSize();
+    return (await getJava()).getUsageSize();
 };
-
-interface Indexer {
-    index(data: ArrayBufferLike): void;
-    getUsage(key: UsageKey): [UsageString];
-    getUsageSize(): number;
-}

@@ -8,12 +8,14 @@ import { decompile, type Options, type TokenCollector } from "./vf";
 import { selectedFile } from "./State";
 import type { Jar } from "../utils/Jar";
 import type { Token } from "./Tokens";
-import { displayLambdas } from "./Settings";
+import { bytecode, displayLambdas } from "./Settings";
+import { JavaWasm } from "../java";
 
 export interface DecompileResult {
     className: string;
     source: string;
     tokens: Token[];
+    language: 'java' | 'bytecode';
 }
 
 const decompilerCounter = new BehaviorSubject<number>(0);
@@ -33,11 +35,16 @@ export function decompileResultPipeline(jar: Observable<MinecraftJar>): Observab
         selectedFile,
         jar,
         displayLambdas.observable,
+        bytecode.observable
     ]).pipe(
         distinctUntilChanged(),
         tap(() => decompilerCounter.next(decompilerCounter.value + 1)),
         throttleTime(250),
-        switchMap(([className, jar, displayLambdas]) => {
+        switchMap(([className, jar, displayLambdas, bytecode]) => {
+            if (bytecode) {
+                return from(getClassBytecode(className, jar.jar));
+            }
+
             let key = `${jar.version}:${className}`;
 
             if (displayLambdas) {
@@ -85,7 +92,7 @@ async function decompileClass(className: string, jar: Jar, options: Options): Pr
 
     if (!files.includes(className)) {
         console.error(`Class not found in Minecraft jar: ${className}`);
-        return { className, source: `// Class not found: ${className}`, tokens: [] };
+        return { className, source: `// Class not found: ${className}`, tokens: [], language: "java" };
     }
 
     try {
@@ -109,10 +116,10 @@ async function decompileClass(className: string, jar: Jar, options: Options): Pr
         tokens.push(...generateImportTokens(source));
         tokens.sort((a, b) => a.start - b.start);
 
-        return { className, source, tokens };
+        return { className, source, tokens, language: "java" };
     } catch (e) {
         console.error(`Error during decompilation of class '${className}':`, e);
-        return { className, source: `// Error during decompilation: ${(e as Error).message}`, tokens: [] };
+        return { className, source: `// Error during decompilation: ${(e as Error).message}`, tokens: [], language: "java" };
     }
 }
 
@@ -163,4 +170,32 @@ function generateImportTokens(source: string): Token[] {
         });
     }
     return importTokens;
+}
+
+async function getClassBytecode(className: string, jar: Jar): Promise<DecompileResult> {
+    const java = await JavaWasm.create();
+
+    var classData = [];
+    const allClasses = Object.keys(jar.entries).filter(f => f.endsWith('.class')).sort();
+    const baseClassName = className.replace(".class", "");
+
+    if (!allClasses.includes(className)) {
+        console.error(`Class not found in Minecraft jar: ${className}`);
+        return { className, source: `// Class not found: ${className}`, tokens: [], language: "bytecode" };
+    }
+
+    const data = await jar.entries[className].bytes();
+    classData.push(data.buffer);
+
+    for (const classFile of allClasses) {
+        if (!classFile.startsWith(baseClassName + "$")) {
+            continue;
+        }
+
+        const data = await jar.entries[classFile].bytes();
+        classData.push(data.buffer);
+    }
+
+    const bytecode = await java.getBytecode(classData);
+    return { className, source: bytecode, tokens: [], language: "bytecode" };
 }
