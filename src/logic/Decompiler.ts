@@ -184,18 +184,23 @@ async function getClassBytecode(className: string, jar: Jar): Promise<DecompileR
         return { className, source: `// Class not found: ${className}`, tokens: [], language: "bytecode" };
     }
 
-    const data = await jar.entries[className].bytes();
-    classData.push(data.buffer);
+    try {
+        const data = await jar.entries[className].bytes();
+        classData.push(data.buffer);
 
-    for (const classFile of allClasses) {
-        if (!classFile.startsWith(baseClassName + "$")) {
-            continue;
+        for (const classFile of allClasses) {
+            if (!classFile.startsWith(baseClassName + "$")) {
+                continue;
+            }
+
+            const data = await jar.entries[classFile].bytes();
+            classData.push(data.buffer);
         }
 
-        const data = await jar.entries[classFile].bytes();
-        classData.push(data.buffer);
+        const bytecode = await java.getBytecode(classData);
+        return { className, source: bytecode, tokens: [], language: "bytecode" };
+    } catch (e) {
+        console.error(`Error during bytecode retrieval of class '${className}':`, e);
+        return { className, source: `// Error during bytecode retrieval: ${(e as Error).message}`, tokens: [], language: "bytecode" };
     }
-
-    const bytecode = await java.getBytecode(classData);
-    return { className, source: bytecode, tokens: [], language: "bytecode" };
 }
