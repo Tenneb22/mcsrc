@@ -110,6 +110,14 @@ export class UsageIndex {
     }
 }
 
+let bytecodeWorker: UsageIndexWorker | null = null;
+
+export async function getBytecode(classData: ArrayBufferLike[]): Promise<string> {
+    if (!bytecodeWorker) {
+        bytecodeWorker = createWrorker();
+    }
+    return bytecodeWorker.getBytecode(classData);
+}
 
 function createWrorker() {
     return new ComlinkWorker<UsageIndexWorker>(

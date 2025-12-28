@@ -9,7 +9,7 @@ import { selectedFile } from "./State";
 import type { Jar } from "../utils/Jar";
 import type { Token } from "./Tokens";
 import { bytecode, displayLambdas } from "./Settings";
-import { JavaWasm } from "../java";
+import { getBytecode } from "../workers/UsageIndex";
 
 export interface DecompileResult {
     className: string;
@@ -173,8 +173,6 @@ function generateImportTokens(source: string): Token[] {
 }
 
 async function getClassBytecode(className: string, jar: Jar): Promise<DecompileResult> {
-    const java = await JavaWasm.create();
-
     var classData = [];
     const allClasses = Object.keys(jar.entries).filter(f => f.endsWith('.class')).sort();
     const baseClassName = className.replace(".class", "");
@@ -197,7 +195,7 @@ async function getClassBytecode(className: string, jar: Jar): Promise<DecompileR
             classData.push(data.buffer);
         }
 
-        const bytecode = await java.getBytecode(classData);
+        const bytecode = await getBytecode(classData);
         return { className, source: bytecode, tokens: [], language: "bytecode" };
     } catch (e) {
         console.error(`Error during bytecode retrieval of class '${className}':`, e);
